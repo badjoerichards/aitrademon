@@ -4,6 +4,7 @@ let isMonitoring = false;
 let observer = null;
 let monitorStats = null;
 let infoBox = null;
+let isInitialDelay = false;
 
 const MONITOR_THEMES = {
   matrix: {
@@ -176,7 +177,7 @@ function parseTradeRow(row) {
 
 // Function to handle new trades
 function handleNewTrade(trade) {
-  if (!isMonitoring) return;
+  if (!isMonitoring || isInitialDelay) return;
   
   chrome.runtime.sendMessage({
     action: 'NEW_TRADE',
@@ -197,23 +198,42 @@ function setupObserver() {
     mutations.forEach((mutation) => {
       if (mutation.type === 'childList') {
         mutation.addedNodes.forEach((node) => {
-          if (node.nodeName === 'TR' && !processedRows.has(node)) {
+          // Only process new rows that are added after monitoring starts
+          if (node.nodeName === 'TR' && 
+              !processedRows.has(node) && 
+              document.readyState === 'complete') {  // Ensure page is fully loaded
             const trade = parseTradeRow(node);
             processedRows.add(node);
             handleNewTrade(trade);
-            
-            // Cleanup old processed rows to prevent memory leaks
-            if (processedRows.size > 1000) {
-              processedRows.clear();
-            }
           }
         });
       }
     });
   });
+
+  // Start observing only after the page is fully loaded
+  if (document.readyState === 'complete') {
+    startObserving();
+  } else {
+    window.addEventListener('load', startObserving);
+  }
 }
 
-// Start observing the tbody
+function startObserving() {
+  // Clear the processed rows set when starting fresh
+  processedRows.clear();
+
+  // Start observing changes to the trade table
+  const tradeTable = document.querySelector('#tabs-leftTabs--tabpanel-2 .g-table-content table tbody');
+  if (tradeTable) {
+    observer.observe(tradeTable, {
+      childList: true,
+      subtree: true
+    });
+  }
+}
+
+// Handle monitoring toggle
 function startMonitoring() {
   if (!observer) {
     setupObserver();
@@ -221,6 +241,9 @@ function startMonitoring() {
   
   const tbody = document.querySelector('#tabs-leftTabs--tabpanel-2 .g-table-content table tbody');
   if (tbody) {
+    // Set a flag to ignore trades during initial delay
+    isInitialDelay = true;
+    
     observer.observe(tbody, {
       childList: true,
       subtree: true
@@ -238,6 +261,12 @@ function startMonitoring() {
       monitorStats = new MonitorStats();
     }
     monitorStats.startUpdates();
+    
+    // Wait 3 seconds before processing any trades
+    setTimeout(() => {
+      console.log('Initial delay completed, now monitoring for new trades');
+      isInitialDelay = false;
+    }, 3000);
     
     // Restore saved position if exists
     const url = new URL(window.location.href);
@@ -276,15 +305,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } else {
       stopMonitoring();
     }
-  }
-});
-
-// Check initial monitoring state
-const url = new URL(window.location.href);
-const key = `monitor_${url.pathname}`;
-chrome.storage.local.get([key], (result) => {
-  if (result[key]) {
-    startMonitoring();
   }
 });
 
@@ -883,4 +903,31 @@ function setupInfoBoxControls(infoBox) {
       }, 1000);
     });
   });
-} 
+}
+
+// Function to wait for trade table and restore monitoring
+function waitForTableAndRestore() {
+  // Check if monitoring was enabled
+  const url = new URL(window.location.href);
+  const key = `monitor_${url.pathname}`;
+  
+  chrome.storage.local.get([key], (result) => {
+    if (result[key]) {
+      // Check if table exists
+      const tbody = document.querySelector('#tabs-leftTabs--tabpanel-2 .g-table-content table tbody');
+      if (tbody) {
+        startMonitoring();
+      } else {
+        // If table doesn't exist yet, wait and try again
+        setTimeout(waitForTableAndRestore, 500);
+      }
+    }
+  });
+}
+
+// Try to restore on both DOMContentLoaded and window load
+document.addEventListener('DOMContentLoaded', waitForTableAndRestore);
+window.addEventListener('load', waitForTableAndRestore);
+
+// Also try after a short delay to catch dynamic table insertion
+setTimeout(waitForTableAndRestore, 1000); 
