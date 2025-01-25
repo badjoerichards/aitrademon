@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Any Trade Monitor</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 10px;
+    }
+    .status {
+      margin: 10px 0;
+      padding: 5px;
+      border-radius: 4px;
+    }
+    .active {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .inactive {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .toggle-container {
+      margin: 15px 0;
+    }
+    .reset-container {
+      margin: 15px 0;
+      text-align: center;
+    }
+    .warning-button {
+      background: #ff5252;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .warning-button:hover {
+      background: #ff6b6b;
+    }
+    .notification-permission {
+      margin: 10px 0;
+      padding: 10px;
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      border-radius: 4px;
+    }
+    .notification-permission .warning {
+      color: #856404;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .notification-permission button {
+      background: #ffc107;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .notification-permission button:hover {
+      background: #e0a800;
+    }
+  </style>
+</head>
+<body>
+  <h3>Any Trade Monitor (by Mr. J from AGENT1)</h3>
+  <div id="currentStatus" class="status"></div>
+  <div class="toggle-container">
+    <label>
+      <input type="checkbox" id="toggleMonitoring">
+      Enable monitoring for this page
+    </label>
+  </div>
+  <div class="theme-container">
+    <label for="themeSelect">Theme:</label>
+    <select id="themeSelect">
+      <option value="default">Default</option>
+      <option value="matrix">The Matrix</option>
+      <option value="cyberpunk">Night City</option>
+      <option value="hacker">Elite Hacker</option>
+      <option value="trader">Pro Trader</option>
+      <option value="crypto">Bitcoin Orange</option>
+      <option value="stark">Stark Industries</option>
+      <option value="wakanda">Wakanda Forever</option>
+      <option value="shield">S.H.I.E.L.D.</option>
+    </select>
+  </div>
+  <div class="reset-container">
+    <button id="resetPage" class="warning-button">Reset Page Settings</button>
+  </div>
+  <button id="openOptions">Options</button>
+  <script src="popup.js"></script>
+</body>
+</html> 

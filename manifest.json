@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Any Trade Monitor",
+  "version": "1.0",
+  "description": "Monitor trades with AI tools, notifications and sounds (by Mr. J from AGENT1 ",
+  "permissions": [
+    "storage",
+    "notifications",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module",
+    "persistent": true
+  },
+  "web_accessible_resources": [{
+    "resources": [
+      "sounds/*",
+      "icon48.png",
+      "icon.png"
+    ],
+    "matches": ["<all_urls>"]
+  }],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icon48.png"
+    }
+  }
+} 
