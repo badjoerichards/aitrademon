@@ -27,9 +27,14 @@ Connect your wallet with any of these tokens to unlock premium features:
 - [$AONE](https://dexscreener.com/solana/cbwxabwtcenyxkmlum8bukgxnfubqjqcvvu7p1en6tgc)
 - [$CREE](https://creebank.org/)
 
-You can receive emails, text messages, and other notifications to your phone or email when a trade is made. Or make POST or other calls to remote APIs like Make, or Zapier.
+Receive emails, text messages, and other notifications to your phone or email when a trade is made. 
+Or make POST or other calls to remote APIs like Make, or Zapier.
 
 This list will update as more projects and partners are added.
+
+## Non-Premium Features - all users
+
+You can still use the extension for with desktop notifications and sound alerts.
 
 ## Contributing & Support
 
