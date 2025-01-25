@@ -5,8 +5,8 @@ An AI-powered (coming soon) Chrome extension to monitor trade activity on any tr
 ## Features
 
 - 🔍 Monitor any trading table in real-time (AI-powered version coming soon)
-- 🔔 Desktop notifications for new trades
-- 🔊 Customizable sound alerts for buy/sell trades
+- 🔔 Useful for monitoring your own trades or other traders with instant notifications.
+- 🔊 APIs, Email, Text messages and customizable sound alerts for new trades, buy/sell.
 - 🎨 Multiple themes including:
   - The Matrix
   - Night City
@@ -26,6 +26,8 @@ Connect your wallet with any of these tokens to unlock premium features:
 - [AGENT1](https://agent1.xyz/story)
 - [$AONE](https://dexscreener.com/solana/cbwxabwtcenyxkmlum8bukgxnfubqjqcvvu7p1en6tgc)
 - [$CREE](https://creebank.org/)
+
+You can receive emails, text messages, and other notifications to your phone or email when a trade is made. Or make POST or other calls to remote APIs like Make, or Zapier.
 
 This list will update as more projects and partners are added.
 
