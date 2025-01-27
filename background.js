@@ -14,17 +14,45 @@ function playSoundInTab(type, tabId) {
     chrome.scripting.executeScript({
       target: { tabId },
       func: (soundUrl) => {
-        const audio = new Audio(soundUrl);
-        audio.play();
+        // Create a muted audio context first
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContext.resume().then(() => {
+          const audio = new Audio(soundUrl);
+          // Add user gesture requirement warning
+          audio.onplay = () => {
+            console.log('Audio played successfully');
+          };
+          audio.onerror = (e) => {
+            console.error('Audio playback failed:', e);
+          };
+          audio.play()
+            .catch(error => {
+              console.warn('Audio autoplay blocked. Will play on next user interaction.');
+              // Store the audio for later
+              window._pendingTradeSound = audio;
+              // Try to play on next user interaction
+              const playOnInteraction = () => {
+                if (window._pendingTradeSound) {
+                  window._pendingTradeSound.play()
+                    .then(() => {
+                      window._pendingTradeSound = null;
+                      document.removeEventListener('click', playOnInteraction);
+                    })
+                    .catch(console.error);
+                }
+              };
+              document.addEventListener('click', playOnInteraction, { once: true });
+            });
+        });
       },
       args: [soundUrl]
     })
     .then(() => {
-      console.log('Sound played successfully');
+      console.log('Sound injection successful');
       resolve();
     })
     .catch((error) => {
-      console.error('Error playing sound:', error);
+      console.error('Error injecting sound:', error);
       reject(error);
     });
   });

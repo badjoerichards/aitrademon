@@ -5,6 +5,19 @@ let observer = null;
 let monitorStats = null;
 let infoBox = null;
 let isInitialDelay = false;
+let isInitialized = false;
+
+// UI Configuration Constants
+const UI_CONFIG = {
+  INFOBOX: {
+    MIN_WIDTH: 300,    // Minimum width of infobox in pixels
+    MIN_HEIGHT: 240,   // Minimum height of infobox in pixels
+    DEBUG_HEIGHT: 600  // Height of infobox when debug panel is open
+  },
+  DEBUG: {
+    OUTPUT_HEIGHT: 200 // Max height of debug output in pixels
+  }
+};
 
 const MONITOR_THEMES = {
   matrix: {
@@ -179,6 +192,40 @@ function parseTradeRow(row) {
 function handleNewTrade(trade) {
   if (!isMonitoring || isInitialDelay) return;
   
+  // Create infobox if it doesn't exist
+  if (!infoBox) {
+    infoBox = createInfoBox();
+    document.body.appendChild(infoBox);
+  }
+  
+  // Add trade to log
+  const logContent = infoBox.querySelector('#trade-log-content');
+  if (!logContent) {
+    console.error('Trade log content element not found');
+    return;
+  }
+  
+  const entry = document.createElement('div');
+  entry.className = `trade-entry ${trade.type.toLowerCase()}`; // here it sets the color of the trade
+  
+  const timestamp = new Date().toLocaleTimeString();
+  entry.innerHTML = `
+    <div class="trade-timestamp">${timestamp}</div>
+    ${trade.type} ${trade.tokenName}: ${trade.totalUSD} @ ${trade.price}
+  `;
+  
+  // Ensure we're appending to the existing content
+  if (logContent.firstChild) {
+    logContent.insertBefore(entry, logContent.firstChild);
+  } else {
+    logContent.appendChild(entry);
+  }
+  
+  // Keep only last 50 entries to prevent too much DOM content
+  while (logContent.children.length > 50) {
+    logContent.removeChild(logContent.lastChild);
+  }
+
   chrome.runtime.sendMessage({
     action: 'NEW_TRADE',
     trade: trade
@@ -196,12 +243,44 @@ function setupObserver() {
     if (!isMonitoring) return;
     
     mutations.forEach((mutation) => {
+      /*
+      // Log mutation details
+      console.log('Mutation Event:', {
+        type: mutation.type,
+        target: mutation.target,
+        addedNodes: Array.from(mutation.addedNodes).map(node => ({
+          nodeType: node.nodeType,
+          nodeName: node.nodeName,
+          className: node.className,
+          innerHTML: node.innerHTML
+        })),
+        removedNodes: mutation.removedNodes.length,
+        previousSibling: mutation.previousSibling,
+        nextSibling: mutation.nextSibling
+      });
+      */
+      
       if (mutation.type === 'childList') {
         mutation.addedNodes.forEach((node) => {
           // Only process new rows that are added after monitoring starts
           if (node.nodeName === 'TR' && 
               !processedRows.has(node) && 
               document.readyState === 'complete') {  // Ensure page is fully loaded
+           
+            // Log the full row HTML and structure
+            console.log('Processing New Row:', {
+              fullHTML: node.outerHTML,
+              cells: Array.from(node.cells).map(cell => ({
+                index: cell.cellIndex,
+                content: cell.innerHTML,
+                textContent: cell.textContent
+              })),
+              attributes: Array.from(node.attributes).map(attr => ({
+                name: attr.name,
+                value: attr.value
+              }))
+            });
+            
             const trade = parseTradeRow(node);
             processedRows.add(node);
             handleNewTrade(trade);
@@ -323,10 +402,10 @@ function createInfoBox() {
       border: 2px solid rgba(76, 175, 80, 0.6);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       font-size: 12px;
-      min-width: 280px;
-      min-height: 230px;
+      min-width: ${UI_CONFIG.INFOBOX.MIN_WIDTH}px;
+      min-height: ${UI_CONFIG.INFOBOX.MIN_HEIGHT}px;
       width: 300px;
-      height: 240px;
+      height: ${UI_CONFIG.INFOBOX.MIN_HEIGHT}px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
       cursor: default;
       user-select: none;
@@ -424,7 +503,7 @@ function createInfoBox() {
       font-family: monospace;
       font-size: 11px;
       white-space: pre-wrap;
-      max-height: 100px;
+      max-height: ${UI_CONFIG.DEBUG.OUTPUT_HEIGHT}px;
       overflow-y: auto;
     }
     #tradeMonitorInfo .debug-console-controls {
@@ -444,6 +523,35 @@ function createInfoBox() {
     }
     #tradeMonitorInfo .icon-button:hover {
       opacity: 1;
+    }
+    #tradeMonitorInfo .trade-log {
+      max-height: 140px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      padding: 5px;
+      border-radius: 4px;
+    }
+    #tradeMonitorInfo #trade-log-content {
+      font-family: monospace;
+      font-size: 12px;
+    }
+    #tradeMonitorInfo .trade-entry {
+      margin: 2px 0;
+      padding: 2px 4px;
+      border-left: 2px solid;
+    }
+    #tradeMonitorInfo .trade-entry.buy {
+      border-color: #4CAF50;
+    }
+    #tradeMonitorInfo .trade-entry.sell {
+      border-color: #f44336;
+    }
+    #tradeMonitorInfo .trade-timestamp {
+      color: #888;
+      font-size: 10px;
+    }
+    #tradeMonitorInfo.debug-open {
+      height: ${UI_CONFIG.INFOBOX.DEBUG_HEIGHT}px !important;
     }
   `;
 
@@ -483,7 +591,10 @@ function createInfoBox() {
       </div>
       <div class="last-trade">
         <div class="label">Last Trade:</div>
-        <div class="value" id="lastTrade">-</div>
+        <div class="value trade-log" id="lastTrade">
+          <div id="trade-log-content">
+          </div>
+        </div>
       </div>
       <div id="errorMessages" class="error"></div>
       <div class="debug-panel">
@@ -592,8 +703,12 @@ class MonitorStats {
     this.lastTrade = trade;
     
     document.getElementById('tradeCount').textContent = this.tradeCount;
+
+    /*
+    // this is the bug
     document.getElementById('lastTrade').textContent = 
       `${trade.type} ${trade.tokenName} - ${trade.totalUSD}`;
+      */
   }
 
   addError(error) {
@@ -733,40 +848,15 @@ function setupInfoBoxControls(infoBox) {
   }
 
   toggleDebugBtn.addEventListener('click', () => {
-    debugPanel.classList.toggle('visible');
+    const isDebugOpen = debugPanel.style.display === 'block';
     
-    if (debugPanel.classList.contains('visible')) {
-      // Store current height before expanding
-      previousHeight = infoBox.offsetHeight;
-      infoBox.style.height = '520px';
-      
-      // Save state
-      const pageUrl = new URL(window.location.href);
-      const sizeKey = `monitor_${pageUrl.pathname}_size`;
-      chrome.storage.local.set({
-        [sizeKey]: {
-          width: infoBox.offsetWidth,
-          height: infoBox.offsetHeight,
-          previousHeight: previousHeight,
-          debugOpen: true
-        }
-      });
+    debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+    
+    // Toggle debug-open class on parent
+    if (debugPanel.style.display === 'block') {
+      infoBox.classList.add('debug-open');
     } else {
-      // Restore previous height
-      if (previousHeight) {
-        infoBox.style.height = `${previousHeight}px`;
-        
-        // Save state
-        const pageUrl = new URL(window.location.href);
-        const sizeKey = `monitor_${pageUrl.pathname}_size`;
-        chrome.storage.local.set({
-          [sizeKey]: {
-            width: infoBox.offsetWidth,
-            height: previousHeight,
-            debugOpen: false
-          }
-        });
-      }
+      infoBox.classList.remove('debug-open');
     }
   });
 
@@ -907,6 +997,8 @@ function setupInfoBoxControls(infoBox) {
 
 // Function to wait for trade table and restore monitoring
 function waitForTableAndRestore() {
+  if (isInitialized) return;  // Prevent multiple initializations
+
   // Check if monitoring was enabled
   const url = new URL(window.location.href);
   const key = `monitor_${url.pathname}`;
@@ -916,6 +1008,7 @@ function waitForTableAndRestore() {
       // Check if table exists
       const tbody = document.querySelector('#tabs-leftTabs--tabpanel-2 .g-table-content table tbody');
       if (tbody) {
+        isInitialized = true;  // Mark as initialized
         startMonitoring();
       } else {
         // If table doesn't exist yet, wait and try again
@@ -925,9 +1018,8 @@ function waitForTableAndRestore() {
   });
 }
 
-// Try to restore on both DOMContentLoaded and window load
-document.addEventListener('DOMContentLoaded', waitForTableAndRestore);
-window.addEventListener('load', waitForTableAndRestore);
-
-// Also try after a short delay to catch dynamic table insertion
-setTimeout(waitForTableAndRestore, 1000); 
+// Try to restore only after the page is fully loaded
+window.addEventListener('load', () => {
+  // Give a short delay after load to ensure dynamic content is ready
+  setTimeout(waitForTableAndRestore, 1000);
+}); 
