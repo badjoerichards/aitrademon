@@ -242,31 +242,23 @@ function setupObserver() {
   observer = new MutationObserver((mutations) => {
     if (!isMonitoring) return;
     
+    // Get reference to our target trade table
+    const tradeTable = document.querySelector('#tabs-leftTabs--tabpanel-2 .g-table-content table tbody');
+    if (!tradeTable) return;
+    
     mutations.forEach((mutation) => {
-      /*
-      // Log mutation details
-      console.log('Mutation Event:', {
-        type: mutation.type,
-        target: mutation.target,
-        addedNodes: Array.from(mutation.addedNodes).map(node => ({
-          nodeType: node.nodeType,
-          nodeName: node.nodeName,
-          className: node.className,
-          innerHTML: node.innerHTML
-        })),
-        removedNodes: mutation.removedNodes.length,
-        previousSibling: mutation.previousSibling,
-        nextSibling: mutation.nextSibling
-      });
-      */
-      
       if (mutation.type === 'childList') {
         mutation.addedNodes.forEach((node) => {
           // Only process new rows that are added after monitoring starts
           if (node.nodeName === 'TR' && 
               !processedRows.has(node) && 
               document.readyState === 'complete') {  // Ensure page is fully loaded
-           
+            
+            // Verify this TR is actually inside our trade table
+            if (!tradeTable.contains(node)) {
+              return;  // Skip if the TR is not in our target table
+            }
+            
             // Log the full row HTML and structure
             console.log('Processing New Row:', {
               fullHTML: node.outerHTML,
@@ -280,7 +272,7 @@ function setupObserver() {
                 value: attr.value
               }))
             });
-            
+
             const trade = parseTradeRow(node);
             processedRows.add(node);
             handleNewTrade(trade);
