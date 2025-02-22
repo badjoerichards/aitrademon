@@ -246,6 +246,10 @@ function setupObserver() {
     const tradeTable = document.querySelector('#tabs-leftTabs--tabpanel-2 .g-table-content table tbody');
     if (!tradeTable) return;
     
+    // Get the current top row from the trade table
+    const topRow = tradeTable.querySelector('tr:first-child');
+    if (!topRow) return;
+    
     mutations.forEach((mutation) => {
       if (mutation.type === 'childList') {
         mutation.addedNodes.forEach((node) => {
@@ -257,6 +261,21 @@ function setupObserver() {
             // Verify this TR is actually inside our trade table
             if (!tradeTable.contains(node)) {
               return;  // Skip if the TR is not in our target table
+            }
+            
+            // Compare the content of the detected new row with the actual top row
+            const newRowContent = node.textContent.trim();
+            const topRowContent = topRow.textContent.trim();
+            
+            console.log('Comparing rows:', {
+              newRow: newRowContent,
+              topRow: topRowContent
+            });
+            
+            // Only proceed if the contents match
+            if (newRowContent !== topRowContent) {
+              console.log('Skipping non-matching row');
+              return;
             }
             
             // Log the full row HTML and structure

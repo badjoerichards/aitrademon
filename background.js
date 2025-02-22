@@ -117,4 +117,43 @@ function storeTrade(trade) {
     
     chrome.storage.local.set({ tradeHistory: history });
   });
-} 
+}
+
+// Keep service worker alive
+chrome.runtime.onStartup.addListener(() => {
+  keepAlive();
+});
+
+function keepAlive() {
+  chrome.runtime.getPlatformInfo(() => {
+    setTimeout(keepAlive, 25000);
+  });
+}
+
+// Request wake lock when possible
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      const wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        console.log('Wake Lock released');
+        // Try to reacquire
+        setTimeout(requestWakeLock, 1000);
+      });
+    }
+  } catch (err) {
+    console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+  }
+}
+
+// Handle system suspend/resume
+chrome.power.onSuspend.addListener(() => {
+  console.log('System suspending - saving state');
+  // Save any important state
+});
+
+chrome.power.onResume.addListener(() => {
+  console.log('System resuming - restoring state');
+  requestWakeLock();
+  // Restore monitoring state
+}); 

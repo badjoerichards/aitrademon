@@ -6,15 +6,18 @@
   "permissions": [
     "storage",
     "notifications",
-    "scripting"
+    "scripting",
+    "background",
+    "power",
+    "system.cpu",
+    "system.memory"
   ],
   "host_permissions": [
     "*://*/*"
   ],
   "background": {
     "service_worker": "background.js",
-    "type": "module",
-    "persistent": true
+    "type": "module"
   },
   "web_accessible_resources": [{
     "resources": [
