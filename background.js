@@ -58,6 +58,52 @@ function playSoundInTab(type, tabId) {
   });
 }
 
+// Separate function to handle trade notifications
+function playTradeNotification(trade, tabId, sendResponse) {
+  console.log('Playing trade notification for:', trade.type);
+  
+  // Play sound based on trade type
+  playSoundInTab(trade.type, tabId)
+    .then(() => {
+      // Create notification
+      console.log('Creating notification for trade:', trade);
+      chrome.notifications.create('', {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icon48.png'),
+        title: `${trade.type} Alert`,
+        message: `${trade.tokenName}: ${trade.totalUSD} @ ${trade.price}`,
+        priority: 2
+      }, (notificationId) => {
+        if (chrome.runtime.lastError) {
+          console.error('Notification creation failed:', chrome.runtime.lastError);
+          sendResponse({ success: false, error: chrome.runtime.lastError });
+        } else {
+          console.log('Notification created with ID:', notificationId);
+          sendResponse({ success: true, notificationId });
+        }
+      });
+    })
+    .catch(error => {
+      console.error('Error in trade handling:', error);
+      // Still try to create notification even if sound fails
+      chrome.notifications.create('', {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icon48.png'),
+        title: `${trade.type} Alert`,
+        message: `${trade.tokenName}: ${trade.totalUSD} @ ${trade.price}`,
+        priority: 2
+      }, (notificationId) => {
+        if (chrome.runtime.lastError) {
+          console.error('Notification creation failed:', chrome.runtime.lastError);
+          sendResponse({ success: false, error: chrome.runtime.lastError });
+        } else {
+          console.log('Notification created with ID (sound failed):', notificationId);
+          sendResponse({ success: true, notificationId, soundError: error.message });
+        }
+      });
+    });
+}
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background script received message:', message);
@@ -68,38 +114,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('Received NEW_TRADE message:', message);
       const trade = message.trade;
       
-      // Play sound based on trade type
-      console.log('Attempting to play sound for type:', trade.type);
-      Promise.resolve(playSoundInTab(trade.type, sender.tab.id))
-        .then(() => {
-          // Create notification
-          console.log('Creating notification for trade:', trade);
-          chrome.notifications.create('', {
-            type: 'basic',
-            iconUrl: chrome.runtime.getURL('icon48.png'),
-            title: `${trade.type} Alert`,
-            message: `${trade.tokenName}: ${trade.totalUSD} @ ${trade.price}`,
-            priority: 2
-          }, (notificationId) => {
-            if (chrome.runtime.lastError) {
-              console.error('Notification creation failed:', chrome.runtime.lastError);
-              console.error('Last error details:', chrome.runtime.lastError);
-              sendResponse({ success: false, error: chrome.runtime.lastError });
-            } else {
-              console.log('Notification created with ID:', notificationId);
-              sendResponse({ success: true, notificationId });
-            }
-          });
-        })
-        .catch(error => {
-          console.error('Error in trade handling:', error);
-          sendResponse({ success: false, error: error.message });
+      // Store the trade first
+      storeTrade(trade);
+      
+      // Check if we have a valid tab ID
+      const tabId = sender.tab?.id;
+      if (!tabId) {
+        console.warn('No tab ID available, getting active tab');
+        // Get the current active tab
+        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+          if (tabs[0]) {
+            playTradeNotification(trade, tabs[0].id, sendResponse);
+          } else {
+            console.error('No active tab found');
+            sendResponse({ success: false, error: 'No active tab found' });
+          }
         });
+        return true; // Keep the message port open
+      }
+      
+      // Play sound and show notification
+      playTradeNotification(trade, tabId, sendResponse);
+      
     } catch (error) {
       console.error('Error in message handler:', error);
       sendResponse({ success: false, error: error.message });
     }
   }
+  
   // Required for async sendResponse
   return true;
 });
@@ -130,30 +172,5 @@ function keepAlive() {
   });
 }
 
-// Request wake lock when possible
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      const wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => {
-        console.log('Wake Lock released');
-        // Try to reacquire
-        setTimeout(requestWakeLock, 1000);
-      });
-    }
-  } catch (err) {
-    console.error(`Wake Lock error: ${err.name}, ${err.message}`);
-  }
-}
-
-// Handle system suspend/resume
-chrome.power.onSuspend.addListener(() => {
-  console.log('System suspending - saving state');
-  // Save any important state
-});
-
-chrome.power.onResume.addListener(() => {
-  console.log('System resuming - restoring state');
-  requestWakeLock();
-  // Restore monitoring state
-}); 
+// Initialize service worker
+console.log('Background service worker initialized'); 

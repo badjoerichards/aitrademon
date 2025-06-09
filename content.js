@@ -963,8 +963,8 @@ function setupInfoBoxControls(infoBox) {
       totalUSD: "$4,208.93",
       amount: "33.7M",
       price: "$0.00012",
-      timestamp: 1737808085017,
-      time: "3h ago"      
+      timestamp: Date.now(),
+      time: "just now"      
     };
 
     console.log('Sending test trade message to background.js:', {
@@ -978,12 +978,14 @@ function setupInfoBoxControls(infoBox) {
     }, response => {
       if (chrome.runtime.lastError) {
         console.error('Error sending message:', chrome.runtime.lastError);
+        logDebug('Message send failed:', chrome.runtime.lastError);
       } else {
         console.log('Message sent successfully, response:', response);
+        logDebug('Test notification sent successfully:', response);
       }
     });
 
-    logDebug('Test notification sent:', testTrade);
+    logDebug('Test trade message sent:', testTrade);
   });
 
   // Clear Debug Console
